@@ -520,6 +520,12 @@ def get_fields_from_routes(
     return flat_models
 
 
+def _clean_openapi_description(description: str) -> str:
+    if len(description.splitlines()) > 1:
+        return inspect.cleandoc(description)
+    return description
+
+
 def get_openapi(
     *,
     title: str,
@@ -541,7 +547,7 @@ def get_openapi(
     if summary:
         info["summary"] = summary
     if description:
-        info["description"] = description
+        info["description"] = _clean_openapi_description(description)
     if terms_of_service:
         info["termsOfService"] = terms_of_service
     if contact:
@@ -611,7 +617,16 @@ def get_openapi(
     if webhook_paths:
         output["webhooks"] = webhook_paths
     if tags:
-        output["tags"] = tags
+        cleaned_tags = []
+        for tag in tags:
+            cleaned_tag = dict(tag)
+            tag_description = cleaned_tag.get("description")
+            if isinstance(tag_description, str):
+                cleaned_tag["description"] = _clean_openapi_description(
+                    tag_description
+                )
+            cleaned_tags.append(cleaned_tag)
+        output["tags"] = cleaned_tags
     if external_docs:
         output["externalDocs"] = external_docs
     return jsonable_encoder(OpenAPI(**output), by_alias=True, exclude_none=True)  # type: ignore[no-any-return]
